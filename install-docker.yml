@@ -1,12 +1,12 @@
 ---
-- name: Install Docker
+- name: Install Docker on Ubuntu Jammy
   hosts: all
   become: true
   vars:
     docker_admin_user: "vagrant"
 
   tasks:
-    - name: Update apt package index and install prerequisites
+    - name: Update apt cache and install prerequisites
       apt:
         name:
           - apt-transport-https
@@ -17,29 +17,20 @@
         state: present
         update_cache: yes
 
-    - name: Create directory for Docker GPG key
-      file:
-        path: /etc/apt/keyrings
-        state: directory
-        mode: '0755'
-
-    - name: Download Docker GPG key
+    - name: Download Docker GPG key to /usr/share/keyrings
       get_url:
         url: https://download.docker.com/linux/ubuntu/gpg
-        dest: /etc/apt/keyrings/docker.gpg
+        dest: /usr/share/keyrings/docker-archive-keyring.gpg
         mode: '0644'
 
-    - name: Add Docker repository
+    - name: Add Docker repository with signed-by keyring
       apt_repository:
-        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable"
+        repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable"
         state: present
         filename: docker
-
-    - name: Update apt cache after adding Docker repo
-      apt:
         update_cache: yes
 
-    - name: Install Docker Engine
+    - name: Install Docker packages
       apt:
         name:
           - docker-ce
@@ -48,6 +39,7 @@
           - docker-buildx-plugin
           - docker-compose-plugin
         state: present
+        update_cache: yes
 
     - name: Ensure Docker service is started and enabled
       systemd:
@@ -55,7 +47,7 @@
         state: started
         enabled: yes
 
-    - name: Add '{{ docker_admin_user }}' to docker group
+    - name: Add user '{{ docker_admin_user }}' to docker group
       user:
         name: "{{ docker_admin_user }}"
         groups: docker
